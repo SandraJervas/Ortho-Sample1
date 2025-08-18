@@ -1,0 +1,15 @@
+stages:
+  train:
+    cmd: python src/train.py
+    deps:
+    - data/processed/train
+    - data/processed/valid
+    - src/train.py
+    params:
+    - train.batch_size
+    - train.image_size
+    - train.lr
+    - train.num_classes
+    - train.num_epochs
+    outs:
+    - models/resnet18.pth
