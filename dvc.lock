@@ -29,3 +29,32 @@ stages:
       hash: md5
       md5: 54f434a85256b92123e779b649884ed7
       size: 44800715
+  evaluate:
+    cmd: python src/evaluate.py
+    deps:
+    - path: data/processed/test
+      hash: md5
+      md5: 951072f9cfdadc3a9b684e43ad3fb5f4.dir
+      size: 69103490
+      nfiles: 693
+    - path: models/resnet_latest.pth
+      hash: md5
+      md5: 54f434a85256b92123e779b649884ed7
+      size: 44800715
+    - path: src/evaluate.py
+      hash: md5
+      md5: 9f213e24e1926ecc84a0e879930bcb07
+      size: 2239
+    params:
+      params.yaml:
+        evaluate:
+          model_path: models/resnet_latest.pth
+          test_dir: data/processed/test
+          batch_size: 32
+          image_size: 224
+          metrics_output: metrics/eval_metrics.json
+    outs:
+    - path: metrics/eval_metrics.json
+      hash: md5
+      md5: 58a070e5a0f4366ba6fd08b8d6f5c50c
+      size: 45

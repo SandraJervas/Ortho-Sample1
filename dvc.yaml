@@ -13,3 +13,13 @@ stages:
     - train.num_epochs
     outs:
     - models/resnet_latest.pth
+  evaluate:
+    cmd: python src/evaluate.py
+    deps:
+    - data/processed/test
+    - models/resnet_latest.pth
+    - src/evaluate.py
+    params:
+    - evaluate
+    outs:
+    - metrics/eval_metrics.json
