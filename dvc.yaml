@@ -12,4 +12,4 @@ stages:
     - train.num_classes
     - train.num_epochs
     outs:
-    - models/resnet18.pth
+    - models/resnet_latest.pth
