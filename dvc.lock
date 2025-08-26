@@ -1,0 +1,31 @@
+schema: '2.0'
+stages:
+  train:
+    cmd: python src/train.py
+    deps:
+    - path: data/processed/train
+      hash: md5
+      md5: 44525318f29d9ca5938627c84ca6eabd.dir
+      size: 385820532
+      nfiles: 2998
+    - path: data/processed/valid
+      hash: md5
+      md5: e9f12d6654b4f9ab0775d147a3b67911.dir
+      size: 94418469
+      nfiles: 701
+    - path: src/train.py
+      hash: md5
+      md5: 7afdb9c8272b171d77ecf3bc7cddd1d7
+      size: 5261
+    params:
+      params.yaml:
+        train.batch_size: 32
+        train.image_size: 224
+        train.lr: 0.0001
+        train.num_classes: 8
+        train.num_epochs: 30
+    outs:
+    - path: models/resnet_latest.pth
+      hash: md5
+      md5: 54f434a85256b92123e779b649884ed7
+      size: 44800715
