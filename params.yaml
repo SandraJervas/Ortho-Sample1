@@ -11,3 +11,10 @@ train:
   patience: 5
   resume: false
   backbone: resnet18   # change to any model if preferred
+
+evaluate:
+  model_path: models/resnet_latest.pth
+  test_dir: data/processed/test
+  batch_size: 32
+  image_size: 224
+  metrics_output: metrics/eval_metrics.json

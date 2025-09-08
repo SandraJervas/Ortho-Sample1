@@ -1,0 +1,9 @@
+labels:
+  0: frontal_at_rest
+  1: frontal_smile
+  2: intraoral_front
+  3: intraoral_left
+  4: intraoral_right
+  5: lower_jaw_view
+  6: profile_at_rest
+  7: upper_jaw_view
