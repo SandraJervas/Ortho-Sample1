@@ -1,54 +1,47 @@
 import torch
 import torch.nn as nn
 from torchvision import models, transforms
-import yaml, os
 from PIL import Image
 import csv
-
+import yaml, os
+import requests
+from io import BytesIO
 from src.utils import GradCAM, find_duplicates
 
-
 class Predictor:
-    def __init__(self, config_path="params.yaml", labels_path="src/labels.yaml"):
+    def __init__(self, config_path="params.yaml"):
         # ---------------------------
         # Load training config
         # ---------------------------
         with open(config_path) as f:
             cfg = yaml.safe_load(f)["train"]
 
-        # ---------------------------
-        # Load labels mapping
-        # ---------------------------
-        self.labels = None
-        if os.path.exists(labels_path):
-            with open(labels_path) as f:
-                raw_map = yaml.safe_load(f).get("labels", {})
+        self.model_path = cfg["model_path"]
+        self.num_classes = cfg["num_classes"]
+        self.image_size = cfg.get("image_size", 224)
 
-            # Force keys to int
-            label_map = {int(k): str(v) for k, v in raw_map.items()}
-            # Ensure order
-            self.labels = [label_map[i] for i in sorted(label_map.keys())]
-
-            print(f"[INFO] ✅ Loaded labels: {self.labels}")
-        else:
-            print("[WARN] ❌ labels.yaml not found, using generic IDs")
-            self.labels = [f"class_{i}" for i in range(cfg["num_classes"])]
+        # ---------------------------
+        # Hardcoded class names
+        # ---------------------------
+        self.class_names = [
+            "frontal_at_rest", "frontal_smile", "intraoral_front",
+            "intraoral_left", "intraoral_right", "lower_jaw_view",
+            "profile_at_rest", "upper_jaw_view"
+        ][:self.num_classes]  # truncate if num_classes < 8
+        print(f"[INFO] ✅ Using class names: {self.class_names}")
 
         # ---------------------------
         # Model setup
         # ---------------------------
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model_path = cfg["model_path"]
-        self.num_classes = cfg["num_classes"]
-        self.image_size = cfg["image_size"]
-
-        # Init backbone (ResNet18)
         self.model = models.resnet18(weights=None)
         self.model.fc = nn.Linear(self.model.fc.in_features, self.num_classes)
         self.model.load_state_dict(torch.load(self.model_path, map_location=self.device, weights_only=True))
         self.model.to(self.device).eval()
 
+        # ---------------------------
         # Transforms
+        # ---------------------------
         self.tf = transforms.Compose([
             transforms.Resize((self.image_size, self.image_size)),
             transforms.ToTensor(),
@@ -64,19 +57,21 @@ class Predictor:
         # ---------------------------
         x = self.tf(image).unsqueeze(0).to(self.device)
 
-        # Forward
+        # Forward pass
         with torch.no_grad():
             logits = self.model(x)
             probs = torch.softmax(logits, dim=1)
             conf, pred = torch.max(probs, 1)
             conf, pred = conf.item(), pred.item()
 
-        # ✅ Human-readable label
+        # ---------------------------
+        # Human-readable label
+        # ---------------------------
         try:
-            label = self.labels[pred]
+            label = self.class_names[pred]
         except IndexError:
             label = f"class_{pred}"
-            print(f"[WARN] Prediction index {pred} out of label map range")
+            print(f"[WARN] Prediction index {pred} out of class_names range")
 
         # ---------------------------
         # Logs
@@ -112,3 +107,31 @@ class Predictor:
             "confidence": conf,
             "logs": logs
         }
+
+    # ---------------------------
+    # NEW: Predict multiple URLs
+    # ---------------------------
+    def predict_urls(self, urls, threshold=0.7, gradcam=False):
+        """
+        urls: list of dicts with 'url' key
+        Returns predictions for each image URL
+        """
+        results = []
+
+        for img_info in urls:
+            url = img_info.get("url")
+            if not url:
+                continue
+            try:
+                response = requests.get(url, timeout=10)
+                image = Image.open(BytesIO(response.content)).convert("RGB")
+            except Exception as e:
+                results.append({"url": url, "status": "error", "error": str(e)})
+                continue
+
+            pred_res = self.predict(image, threshold=threshold, gradcam=gradcam)
+            pred_res["url"] = url
+            pred_res["status"] = "new" if pred_res["confidence"] >= threshold else "uncertain"
+            results.append(pred_res)
+
+        return {"images": results}

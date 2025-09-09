@@ -34,7 +34,8 @@ class PredictRequest(BaseModel):
 # FastAPI App
 # -----------------------------
 app = FastAPI(title="Orthodontic Classifier API")
-predictor = Predictor("params.yaml", "labels.yaml")
+predictor = Predictor("params.yaml")
+
 
 @app.get("/")
 async def root():
@@ -51,7 +52,20 @@ async def predict_batch(req: PredictRequest):
             resp.raise_for_status()
             image = Image.open(io.BytesIO(resp.content)).convert("RGB")
 
-            # ✅ Now this uses predictor from predictor.py
+            # compute hash
+            h = get_hash(image)
+
+            # duplicate check
+            if h in seen:
+                results.append({
+                    "url": item.url,
+                    "label": seen[h]["label"],
+                    "confidence": seen[h]["confidence"],
+                    "status": "duplicate"
+                })
+                continue
+
+            # prediction
             pred = predictor.predict(image)
             label, conf = pred["label"], pred["confidence"]
 
@@ -60,34 +74,16 @@ async def predict_batch(req: PredictRequest):
                 writer = csv.writer(f)
                 writer.writerow([item.url, label, conf])
 
-            # duplicate check
-            h = get_hash(image)
-            if h in seen:
-                prev_url, prev_label, prev_conf = seen[h]
-                if conf > prev_conf:
-                    with open("logs/duplicates.csv", "a", newline="") as f:
-                        writer = csv.writer(f)
-                        writer.writerow([prev_url, prev_label, prev_conf, "removed"])
-                        writer.writerow([item.url, label, conf, "kept"])
-                    seen[h] = (item.url, label, conf)
-                else:
-                    with open("logs/duplicates.csv", "a", newline="") as f:
-                        writer = csv.writer(f)
-                        writer.writerow([item.url, label, conf, "removed"])
-                continue
+            seen[h] = {"label": label, "confidence": conf}
 
-            seen[h] = (item.url, label, conf)
+            results.append({
+                "url": item.url,
+                "label": label,
+                "confidence": conf,
+                "status": "new" if conf >= 0.7 else "uncertain"
+            })
 
         except Exception as e:
-            results.append({"url": item.url, "error": str(e)})
-
-    # prepare unique output
-    for url, label, conf in seen.values():
-        results.append({
-            "url": url,
-            "label": label,
-            "confidence": conf,
-            "status": "new"
-        })
+            results.append({"url": item.url, "status": "error", "error": str(e)})
 
     return {"images": results}
