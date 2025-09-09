@@ -5,11 +5,11 @@ import yaml, os
 from PIL import Image
 import csv
 
-from utils import GradCAM, find_duplicates
+from src.utils import GradCAM, find_duplicates
 
 
 class Predictor:
-    def __init__(self, config_path="params.yaml", labels_path="labels.yaml"):
+    def __init__(self, config_path="params.yaml", labels_path="src/labels.yaml"):
         # ---------------------------
         # Load training config
         # ---------------------------
