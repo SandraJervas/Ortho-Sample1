@@ -8,18 +8,13 @@ import yaml
 from src.predictor import Predictor
 
 
-# -----------------------------
-# Helper: compute image hash
-# -----------------------------
-def get_hash(image: Image.Image) -> str:
-    """Compute hash for duplicate detection (average hash)."""
-    img = image.convert("L").resize((8, 8), Image.Resampling.LANCZOS)
-    pixels = np.array(img).flatten()
-    avg = pixels.mean()
-    bits = "".join(['1' if p > avg else '0' for p in pixels])
+def get_hash(image: Image.Image) -> str: 
+    """Compute hash for duplicate detection (average hash).""" 
+    img = image.convert("L").resize((8, 8), Image.Resampling.LANCZOS) 
+    pixels = np.array(img).flatten() 
+    avg = pixels.mean() 
+    bits = "".join(['1' if p > avg else '0' for p in pixels]) 
     return hashlib.sha256(bits.encode()).hexdigest()
-
-
 # -----------------------------
 # API Input Schema
 # -----------------------------
@@ -39,7 +34,7 @@ predictor = Predictor("params.yaml")
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to Orthodontic Classifier API 🚀"}
+    return {"message": "Welcome to Orthodontic Classifier API"}
 
 @app.post("/predict")
 async def predict_batch(req: PredictRequest):
